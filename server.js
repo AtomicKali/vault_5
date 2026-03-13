@@ -35,6 +35,8 @@ db.defaults({
   folders:  {},  // { [id]: { id, name, parentId, allowedEmails[], createdAt, createdBy } }
   files:    {},  // { [id]: { id, name, key, url, folderId, size, uploadedAt, uploadedBy, allowedEmails[], storage } }
   trash:    {},  // { [id]: { ...item, type, trashedAt, trashedBy } }
+  shop:     {},  // { [id]: { id, name, description, price, currency, imageUrl, category, stock, active } }
+  orders:   {},  // { [id]: { id, itemId, buyerEmail, qty, price, status, createdAt } }
   users:    {},  // { [email]: { email, name, avatar, firstSeen, lastSeen, totalUploads, totalDownloads, storageUsed } }
   activity: [],  // [{ id, type, who, what, when, detail, size }]
   online:   {}   // { [email]: lastSeen } — real-time presence
@@ -483,6 +485,88 @@ app.get('/api/stats', requireAdmin, (req, res) => {
     users: users.length,
     storageProvider: USE_R2 ? 'r2' : 'local'
   });
+});
+
+// ── SHOP ──────────────────────────────────────────────────────────────────
+app.get('/api/shop', (req, res) => {
+  const items = Object.values(db.get('shop').value() || {})
+    .filter(i => !i.deleted)
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+  res.json(items);
+});
+
+app.post('/api/shop', requireAdmin, (req, res) => {
+  const { name, description, price, currency, imageUrl, category, stock, active } = req.body;
+  if (!name?.trim() || price === undefined) return res.status(400).json({ error: 'Name and price required' });
+  const id = uuidv4();
+  const item = {
+    id, name: name.trim(), description: description || '',
+    price: parseFloat(price), currency: currency || 'USD',
+    imageUrl: imageUrl || '', category: category || 'General',
+    stock: stock !== undefined ? parseInt(stock) : -1,
+    active: active !== false,
+    createdAt: new Date().toISOString(),
+    order: Object.keys(db.get('shop').value() || {}).length
+  };
+  db.set(`shop.${id}`, item).write();
+  res.json(item);
+});
+
+app.put('/api/shop/:id', requireAdmin, (req, res) => {
+  const item = db.get(`shop.${req.params.id}`).value();
+  if (!item) return res.status(404).json({ error: 'Not found' });
+  const updates = {};
+  ['name','description','price','currency','imageUrl','category','stock','active','order'].forEach(k => {
+    if (req.body[k] !== undefined) updates[k] = req.body[k];
+  });
+  if (updates.price !== undefined) updates.price = parseFloat(updates.price);
+  if (updates.stock !== undefined) updates.stock = parseInt(updates.stock);
+  const updated = { ...item, ...updates };
+  db.set(`shop.${req.params.id}`, updated).write();
+  res.json(updated);
+});
+
+app.delete('/api/shop/:id', requireAdmin, (req, res) => {
+  const item = db.get(`shop.${req.params.id}`).value();
+  if (!item) return res.status(404).json({ error: 'Not found' });
+  db.set(`shop.${req.params.id}.deleted`, true).write();
+  res.json({ success: true });
+});
+
+// ── ORDERS ────────────────────────────────────────────────────────────────
+app.get('/api/orders', requireAdmin, (req, res) => {
+  const orders = Object.values(db.get('orders').value() || {})
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  res.json(orders);
+});
+
+app.post('/api/orders', requireUser, (req, res) => {
+  const { itemId, qty = 1, paymentRef } = req.body;
+  const item = db.get(`shop.${itemId}`).value();
+  if (!item) return res.status(404).json({ error: 'Item not found' });
+  const id = uuidv4();
+  const order = {
+    id, itemId, itemName: item.name,
+    qty: parseInt(qty),
+    price: item.price * parseInt(qty),
+    currency: item.currency,
+    buyerEmail: req.user.email,
+    buyerName: req.user.name,
+    paymentRef: paymentRef || '',
+    status: 'pending',
+    createdAt: new Date().toISOString()
+  };
+  db.set(`orders.${id}`, order).write();
+  logActivity('purchase', req.user.email, item.name, `Order #${id.slice(0,8)} — ${item.currency} ${order.price}`);
+  res.json(order);
+});
+
+app.put('/api/orders/:id', requireAdmin, (req, res) => {
+  const order = db.get(`orders.${req.params.id}`).value();
+  if (!order) return res.status(404).json({ error: 'Not found' });
+  const updated = { ...order, ...req.body };
+  db.set(`orders.${req.params.id}`, updated).write();
+  res.json(updated);
 });
 
 // ── PING (UptimeRobot) ────────────────────────────────────────────────────

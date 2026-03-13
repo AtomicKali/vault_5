@@ -4,12 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0c0c15">
-<title>VAULT | Cloud Storage</title>
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="favicon.png">
+<title>Private Digital Vault</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&family=Fira+Code:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 /* ═══════════════════════ TOKENS ═══════════════════════ */
 :root {
@@ -570,6 +569,77 @@ body::after {
   .logo-name { display:none; }
   .l-chips { display:none; }
 }
+/* ═══════════════════════ SHOP ═══════════════════════ */
+.shop-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;margin-bottom:28px; }
+.shop-card {
+  background:var(--sf);border:1.5px solid var(--b);border-radius:var(--r);
+  overflow:hidden;cursor:pointer;transition:all .2s;position:relative;
+  display:flex;flex-direction:column;
+}
+.shop-card:hover { border-color:var(--b3);transform:translateY(-3px);box-shadow:var(--sh); }
+.shop-card.inactive { opacity:.5; }
+.shop-img {
+  width:100%;height:160px;object-fit:cover;display:block;
+  background:var(--s2);
+}
+.shop-img-placeholder {
+  width:100%;height:160px;background:var(--s2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:48px;
+}
+.shop-body { padding:14px 16px 16px;flex:1;display:flex;flex-direction:column; }
+.shop-cat {
+  font-family:var(--m);font-size:9px;font-weight:700;letter-spacing:1.4px;
+  color:var(--p);text-transform:uppercase;margin-bottom:5px;
+}
+.shop-name { font-size:15px;font-weight:800;letter-spacing:-.3px;margin-bottom:5px;line-height:1.3; }
+.shop-desc { font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:12px;flex:1; }
+.shop-footer { display:flex;align-items:center;justify-content:space-between;margin-top:auto; }
+.shop-price {
+  font-size:20px;font-weight:900;letter-spacing:-.5px;
+  background:var(--grd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.shop-price-cur { font-size:11px;opacity:.7;font-weight:600; }
+.shop-stock { font-family:var(--m);font-size:10px;color:var(--t3); }
+.shop-stock.low { color:var(--wrn); }
+.shop-stock.out { color:var(--err); }
+.shop-buy-btn {
+  background:var(--grd);color:#fff;border:none;cursor:pointer;
+  font-family:var(--f);font-size:12px;font-weight:700;
+  padding:7px 15px;border-radius:50px;transition:all .15s;
+  box-shadow:0 3px 12px rgba(92,142,240,.3);
+}
+.shop-buy-btn:hover { transform:scale(1.05);box-shadow:0 5px 18px rgba(92,142,240,.45); }
+.shop-edit-acts {
+  position:absolute;top:8px;right:8px;display:none;gap:4px;
+}
+.shop-card:hover .shop-edit-acts { display:flex; }
+
+/* QR modal */
+.qr-wrap { text-align:center;padding:8px 0; }
+#qr-canvas { margin:0 auto 12px; }
+.qr-caption { font-family:var(--m);font-size:10px;color:var(--t3);word-break:break-all; }
+
+/* Orders table */
+.order-status {
+  font-family:var(--m);font-size:10px;font-weight:700;letter-spacing:.5px;
+  padding:3px 9px;border-radius:50px;display:inline-flex;align-items:center;gap:4px;
+}
+.os-pending  { background:rgba(251,191,36,.14);color:var(--wrn); }
+.os-paid     { background:rgba(52,211,153,.14);color:var(--ok); }
+.os-shipped  { background:rgba(92,142,240,.14);color:var(--p2); }
+.os-cancelled{ background:rgba(248,113,113,.14);color:var(--err); }
+
+/* Image preview in file cards */
+.fc-thumb-img { width:100%;height:100%;object-fit:cover;border-radius:var(--r3); }
+
+/* Admin badge on shop items */
+.shop-inactive-badge {
+  position:absolute;top:8px;left:8px;
+  background:rgba(248,113,113,.85);color:#fff;
+  font-family:var(--m);font-size:9px;font-weight:700;letter-spacing:.8px;
+  padding:2px 8px;border-radius:50px;
+}
 </style>
 </head>
 <body>
@@ -656,11 +726,16 @@ body::after {
     <button class="nv" id="nv-starred" onclick="goNav('starred')"><span class="nv-ic">⭐</span>Starred</button>
     <button class="nv" id="nv-trash" onclick="goNav('trash')"><span class="nv-ic">🗑️</span>Trash<span class="nv-ct" id="trash-ct">0</span></button>
     <div class="sb-div"></div>
+    <div class="sb-lbl">Shop</div>
+    <button class="nv" id="nv-shop" onclick="goNav('shop')"><span class="nv-ic">🛒</span>Store</button>
+    <button class="nv" id="nv-orders" onclick="goNav('orders')"><span class="nv-ic">📦</span>My Orders</button>
+    <div class="sb-div"></div>
     <div id="admin-sb" style="display:none">
       <div class="sb-lbl">Admin</div>
       <button class="nv" id="nv-analytics" onclick="goNav('analytics')"><span class="nv-ic">📊</span>Analytics</button>
       <button class="nv" id="nv-users" onclick="goNav('users')"><span class="nv-ic">👥</span>Users<span class="nv-ct" id="users-ct">0</span></button>
       <button class="nv" id="nv-activity" onclick="goNav('activity')"><span class="nv-ic">📋</span>Activity</button>
+      <button class="nv" id="nv-all-orders" onclick="goNav('all-orders')"><span class="nv-ic">🧾</span>All Orders<span class="nv-ct" id="orders-ct">0</span></button>
       <div class="sb-div"></div>
     </div>
     <div class="st-box">
@@ -738,6 +813,33 @@ body::after {
       </div>
       <div class="pb" id="trash-pb"></div>
     </div>
+
+    <!-- SHOP -->
+    <div class="pane" id="pane-shop">
+      <div class="ph">
+        <div class="ph-l"><span class="ph-t">Store</span><span class="ph-b" id="shop-ct">0 items</span></div>
+        <div class="ph-a" id="shop-acts"></div>
+      </div>
+      <div class="pb" id="shop-pb"><div class="loader"><span class="spin"></span>Loading…</div></div>
+    </div>
+
+    <!-- MY ORDERS -->
+    <div class="pane" id="pane-orders">
+      <div class="ph">
+        <div class="ph-l"><span class="ph-t">My Orders</span></div>
+        <div class="ph-a"><button class="btn btn-o btn-sm" onclick="loadMyOrders()">↻ Refresh</button></div>
+      </div>
+      <div class="pb" id="orders-pb"><div class="loader"><span class="spin"></span>Loading…</div></div>
+    </div>
+
+    <!-- ALL ORDERS (admin) -->
+    <div class="pane" id="pane-all-orders">
+      <div class="ph">
+        <div class="ph-l"><span class="ph-t">All Orders</span><span class="ph-b" id="all-orders-ct">0 orders</span></div>
+        <div class="ph-a"><button class="btn btn-o btn-sm" onclick="loadAllOrders()">↻ Refresh</button></div>
+      </div>
+      <div class="pb" id="all-orders-pb"><div class="loader"><span class="spin"></span>Loading…</div></div>
+    </div>
   </main>
 </div>
 
@@ -814,7 +916,7 @@ function boot(){
   renderUser();
   if(ADM){$('admin-sb').style.display='';initSocket();}
   else $('fab').style.display='none';
-  loadFiles();loadTrashCt();loadStorageBar();loadUserCt();
+  loadFiles();loadTrashCt();loadStorageBar();loadUserCt();loadOrdersCt();
 }
 
 function renderUser(){
@@ -862,7 +964,7 @@ function goNav(p){
   document.querySelectorAll('.nv').forEach(x=>x.classList.remove('on'));
   const ni=$('nv-'+p);if(ni)ni.classList.add('on');
   closeCtx();$('SB').classList.remove('open');$('sb-ov').style.display='none';
-  ({files:loadFiles,recent:loadRecent,starred:loadStarred,trash:loadTrash,users:loadUsers,activity:loadActivity,analytics:loadAnalytics})[p]?.();
+  ({files:loadFiles,recent:loadRecent,starred:loadStarred,trash:loadTrash,users:loadUsers,activity:loadActivity,analytics:loadAnalytics,shop:loadShop,orders:loadMyOrders,'all-orders':loadAllOrders})[p]?.();
 }
 
 /* ═══════ CTX MENU ═══════ */
@@ -1471,6 +1573,372 @@ $('pw-btn').addEventListener('click',async()=>{
   else{err.textContent='✗ Wrong password';btn.disabled=false;btn.textContent='Unlock Vault';}
 });
 $('pw-inp').addEventListener('keydown',e=>{if(e.key==='Enter')$('pw-btn').click();});
+
+/* ═══════════════════════════════════════════
+   SHOP
+═══════════════════════════════════════════ */
+let ShopItems=[];
+
+async function loadShop(){
+  const b=$('shop-pb');
+  b.innerHTML=`<div class="loader"><span class="spin"></span>Loading store…</div>`;
+  $('shop-acts').innerHTML=ADM?`<button class="btn btn-p btn-sm" onclick="showAddItemModal()">＋ Add Item</button>`:'';
+  ShopItems=await api('GET','/api/shop');
+  if(!Array.isArray(ShopItems))ShopItems=[];
+  $('shop-ct').textContent=ShopItems.filter(i=>i.active).length+' items';
+  if(!ShopItems.length){
+    b.innerHTML=`<div class="empty"><span class="e-ic">🛒</span><div class="e-h">Store is empty</div><div class="e-p">${ADM?'Add items to get started':'No products yet'}</div></div>`;
+    return;
+  }
+  const visible=ADM?ShopItems:ShopItems.filter(i=>i.active);
+  if(!visible.length){b.innerHTML=`<div class="empty"><span class="e-ic">🛒</span><div class="e-h">No active items</div></div>`;return;}
+
+  // Group by category
+  const cats={};
+  visible.forEach(item=>{
+    const c=item.category||'General';
+    if(!cats[c])cats[c]=[];
+    cats[c].push(item);
+  });
+
+  let html='';
+  Object.entries(cats).forEach(([cat,items])=>{
+    html+=`<div class="slbl">${cat}</div><div class="shop-grid">${items.map(shopCard).join('')}</div>`;
+  });
+  b.innerHTML=html;
+}
+
+function shopCard(item){
+  const stockLabel=item.stock===-1?'In stock':item.stock===0?'Out of stock':item.stock<5?`Only ${item.stock} left`:`${item.stock} in stock`;
+  const stockClass=item.stock===0?'out':item.stock>0&&item.stock<5?'low':'';
+  const imgHtml=item.imageUrl
+    ?`<img class="shop-img" src="${item.imageUrl}" alt="${item.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+    :'';
+  const placeholderStyle=item.imageUrl?'display:none':'';
+  return`<div class="shop-card${item.active?'':' inactive'}" id="sc-${item.id}">
+    ${!item.active&&ADM?`<div class="shop-inactive-badge">HIDDEN</div>`:''}
+    ${imgHtml}
+    <div class="shop-img-placeholder" style="${placeholderStyle}">🛍️</div>
+    <div class="shop-body">
+      <div class="shop-cat">${item.category||'General'}</div>
+      <div class="shop-name">${item.name}</div>
+      <div class="shop-desc">${item.description||'No description'}</div>
+      <div class="shop-footer">
+        <div>
+          <div class="shop-price"><span class="shop-price-cur">${item.currency||'USD'} </span>${parseFloat(item.price).toFixed(2)}</div>
+          <div class="shop-stock ${stockClass}">${stockLabel}</div>
+        </div>
+        ${item.stock!==0?`<button class="shop-buy-btn" onclick="event.stopPropagation();showPurchaseModal('${item.id}')">Buy Now</button>`:`<span style="font-family:var(--m);font-size:11px;color:var(--err)">SOLD OUT</span>`}
+      </div>
+    </div>
+    ${ADM?`<div class="shop-edit-acts">
+      <button class="csm b" onclick="event.stopPropagation();showEditItemModal('${item.id}')" title="Edit">✏️</button>
+      <button class="csm b" onclick="event.stopPropagation();showItemQR('${item.id}','${fmt.esc(item.name)}')" title="QR Code">⬛</button>
+      <button class="csm" onclick="event.stopPropagation();toggleItemActive('${item.id}')" title="${item.active?'Hide':'Show'}">${item.active?'👁':'🙈'}</button>
+      <button class="csm" onclick="event.stopPropagation();deleteItem('${item.id}','${fmt.esc(item.name)}')" title="Delete">🗑</button>
+    </div>`:''}`+
+  `</div>`;
+}
+
+/* ── Add/Edit Item Modal ── */
+function showAddItemModal(){
+  showModal(`<div class="modal" style="max-width:520px"><div class="modal-top"></div><div class="modal-body">
+    <div class="modal-title">Add Store Item</div>
+    <div class="modal-sub">NEW PRODUCT</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="fg" style="grid-column:1/-1"><label class="flbl">Item Name</label><input class="finp" id="si-name" placeholder="e.g. Premium Plan" autofocus></div>
+      <div class="fg"><label class="flbl">Price</label><input class="finp" id="si-price" type="number" min="0" step="0.01" placeholder="9.99"></div>
+      <div class="fg"><label class="flbl">Currency</label><select class="fsel" id="si-cur"><option>USD</option><option>EUR</option><option>GBP</option><option>PHP</option><option>MYR</option><option>SGD</option><option>AUD</option><option>CAD</option><option>JPY</option><option>INR</option></select></div>
+      <div class="fg"><label class="flbl">Category</label><input class="finp" id="si-cat" placeholder="e.g. Subscription"></div>
+      <div class="fg"><label class="flbl">Stock (-1 = unlimited)</label><input class="finp" id="si-stock" type="number" value="-1"></div>
+      <div class="fg" style="grid-column:1/-1"><label class="flbl">Image URL</label><input class="finp" id="si-img" placeholder="https://…" oninput="prevImg(this.value)"></div>
+      <div class="fg" style="grid-column:1/-1;text-align:center" id="si-prev"></div>
+      <div class="fg" style="grid-column:1/-1"><label class="flbl">Description</label><textarea class="finp" id="si-desc" rows="3" placeholder="Describe this product…" style="resize:vertical"></textarea></div>
+    </div>
+    <div class="modal-ft"><button class="btn btn-o" onclick="closeModal()">Cancel</button><button class="btn btn-p" onclick="saveNewItem()">Add Item</button></div>
+  </div></div>`);
+  setTimeout(()=>$('si-name')?.focus(),50);
+}
+
+function prevImg(url){
+  const p=$('si-prev');if(!p)return;
+  p.innerHTML=url?`<img src="${url}" style="max-height:100px;border-radius:8px;border:1.5px solid var(--b)" onerror="this.style.display='none'">`:'';
+}
+
+async function saveNewItem(){
+  const name=$('si-name')?.value.trim();
+  const price=$('si-price')?.value;
+  if(!name||!price)return toast('Name and price required','er');
+  const r=await api('POST','/api/shop',{
+    name,price,
+    currency:$('si-cur')?.value||'USD',
+    category:$('si-cat')?.value.trim()||'General',
+    stock:parseInt($('si-stock')?.value||'-1'),
+    imageUrl:$('si-img')?.value.trim()||'',
+    description:$('si-desc')?.value.trim()||''
+  });
+  if(r.id){toast('Item added','ok','🛍️');closeModal();loadShop();}
+  else toast(r.error||'Error','er');
+}
+
+function showEditItemModal(id){
+  const item=ShopItems.find(i=>i.id===id);
+  if(!item)return;
+  showModal(`<div class="modal" style="max-width:520px"><div class="modal-top"></div><div class="modal-body">
+    <div class="modal-title">Edit Item</div>
+    <div class="modal-sub">UPDATE PRODUCT</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="fg" style="grid-column:1/-1"><label class="flbl">Item Name</label><input class="finp" id="ei-name" value="${item.name}"></div>
+      <div class="fg"><label class="flbl">Price</label><input class="finp" id="ei-price" type="number" min="0" step="0.01" value="${item.price}"></div>
+      <div class="fg"><label class="flbl">Currency</label><select class="fsel" id="ei-cur">
+        ${['USD','EUR','GBP','PHP','MYR','SGD','AUD','CAD','JPY','INR'].map(c=>`<option${c===item.currency?' selected':''}>${c}</option>`).join('')}
+      </select></div>
+      <div class="fg"><label class="flbl">Category</label><input class="finp" id="ei-cat" value="${item.category||'General'}"></div>
+      <div class="fg"><label class="flbl">Stock (-1 = unlimited)</label><input class="finp" id="ei-stock" type="number" value="${item.stock!=null?item.stock:-1}"></div>
+      <div class="fg" style="grid-column:1/-1"><label class="flbl">Image URL</label><input class="finp" id="ei-img" value="${item.imageUrl||''}" oninput="prevImgE(this.value)"></div>
+      <div class="fg" style="grid-column:1/-1;text-align:center" id="ei-prev">${item.imageUrl?`<img src="${item.imageUrl}" style="max-height:100px;border-radius:8px;border:1.5px solid var(--b)">`:''}</div>
+      <div class="fg" style="grid-column:1/-1"><label class="flbl">Description</label><textarea class="finp" id="ei-desc" rows="3" style="resize:vertical">${item.description||''}</textarea></div>
+    </div>
+    <div class="modal-ft"><button class="btn btn-o" onclick="closeModal()">Cancel</button><button class="btn btn-p" onclick="saveEditItem('${id}')">Save Changes</button></div>
+  </div></div>`);
+}
+
+function prevImgE(url){
+  const p=$('ei-prev');if(!p)return;
+  p.innerHTML=url?`<img src="${url}" style="max-height:100px;border-radius:8px;border:1.5px solid var(--b)" onerror="this.style.display='none'">`:'';
+}
+
+async function saveEditItem(id){
+  const r=await api('PUT',`/api/shop/${id}`,{
+    name:$('ei-name')?.value.trim(),
+    price:parseFloat($('ei-price')?.value),
+    currency:$('ei-cur')?.value,
+    category:$('ei-cat')?.value.trim(),
+    stock:parseInt($('ei-stock')?.value||'-1'),
+    imageUrl:$('ei-img')?.value.trim(),
+    description:$('ei-desc')?.value.trim()
+  });
+  if(r.id){toast('Item updated','ok','✏️');closeModal();loadShop();}
+  else toast(r.error||'Error','er');
+}
+
+async function toggleItemActive(id){
+  const item=ShopItems.find(i=>i.id===id);if(!item)return;
+  const r=await api('PUT',`/api/shop/${id}`,{active:!item.active});
+  if(r.id){toast(r.active?'Item visible':'Item hidden','in','👁');loadShop();}
+}
+
+async function deleteItem(id,name){
+  if(!confirm(`Delete "${name}"?`))return;
+  const r=await api('DELETE',`/api/shop/${id}`);
+  if(r.success){toast('Item deleted','wn','🗑');loadShop();}
+}
+
+/* ── QR Code Modal ── */
+function showItemQR(id,name){
+  const item=ShopItems.find(i=>i.id===id);
+  const purchaseUrl=`${location.origin}#shop-buy-${id}`;
+  showModal(`<div class="modal"><div class="modal-top"></div><div class="modal-body">
+    <div class="modal-title">QR Code</div>
+    <div class="modal-sub">${name}</div>
+    <div class="qr-wrap">
+      <div id="qr-canvas" style="width:200px;height:200px;margin:0 auto 12px"></div>
+      <div class="qr-caption">${purchaseUrl}</div>
+      ${item?`<div style="margin-top:12px;font-size:22px;font-weight:900;background:var(--grd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${item.currency||'USD'} ${parseFloat(item.price).toFixed(2)}</div>`:''}
+      ${item?.description?`<div style="font-size:12px;color:var(--t2);margin-top:6px">${item.description}</div>`:''}
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-o" onclick="closeModal()">Close</button>
+      <button class="btn btn-p" onclick="downloadQR('${fmt.esc(name)}')">⬇ Download QR</button>
+    </div>
+  </div></div>`);
+  setTimeout(()=>{
+    const el=document.getElementById('qr-canvas');
+    if(el&&typeof QRCode!=='undefined'){
+      new QRCode(el,{text:purchaseUrl,width:200,height:200,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.H});
+    }
+  },80);
+}
+
+function downloadQR(name){
+  const canvas=document.querySelector('#qr-canvas canvas')||document.querySelector('#qr-canvas img');
+  if(!canvas)return toast('QR not ready','er');
+  const link=document.createElement('a');
+  if(canvas.tagName==='CANVAS'){link.href=canvas.toDataURL('image/png');}
+  else{link.href=canvas.src;}
+  link.download=`qr-${name.replace(/[^a-z0-9]/gi,'-')}.png`;
+  link.click();
+  toast('QR downloaded','ok','⬛');
+}
+
+/* ── Purchase Modal ── */
+function showPurchaseModal(id){
+  const item=ShopItems.find(i=>i.id===id);
+  if(!item)return;
+  if(!ME){toast('Sign in to purchase','er','🔐');return;}
+  const purchaseUrl=`${location.origin}#shop-buy-${id}`;
+  showModal(`<div class="modal" style="max-width:460px"><div class="modal-top"></div><div class="modal-body">
+    <div class="modal-title">Purchase</div>
+    <div class="modal-sub">COMPLETE YOUR ORDER</div>
+    <!-- Item summary -->
+    <div style="display:flex;align-items:center;gap:14px;background:var(--s2);border:1.5px solid var(--b);border-radius:var(--r2);padding:14px;margin-bottom:18px">
+      ${item.imageUrl?`<img src="${item.imageUrl}" style="width:56px;height:56px;object-fit:cover;border-radius:8px;flex-shrink:0">`:`<div style="width:56px;height:56px;background:var(--s3);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">🛍️</div>`}
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800;font-size:15px;margin-bottom:3px">${item.name}</div>
+        <div style="font-size:12px;color:var(--t2)">${item.description||''}</div>
+      </div>
+      <div style="font-size:22px;font-weight:900;background:var(--grd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;flex-shrink:0">${item.currency} ${parseFloat(item.price).toFixed(2)}</div>
+    </div>
+    <!-- QR Payment -->
+    <div style="text-align:center;margin-bottom:18px">
+      <div style="font-family:var(--m);font-size:9px;color:var(--t3);letter-spacing:1.2px;margin-bottom:10px">SCAN TO PAY</div>
+      <div id="pay-qr" style="width:160px;height:160px;margin:0 auto 10px;background:white;padding:8px;border-radius:8px"></div>
+      <div style="font-family:var(--m);font-size:10px;color:var(--t3)">${item.currency} ${parseFloat(item.price).toFixed(2)}</div>
+    </div>
+    <div class="fg">
+      <label class="flbl">Qty</label>
+      <input class="finp" id="po-qty" type="number" min="1" value="1" ${item.stock>0?`max="${item.stock}"`:''}>
+    </div>
+    <div class="fg">
+      <label class="flbl">Payment Reference / Transaction ID</label>
+      <input class="finp" id="po-ref" placeholder="e.g. TXN123456789">
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-o" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-p" onclick="submitOrder('${id}')">Submit Order</button>
+    </div>
+  </div></div>`);
+  setTimeout(()=>{
+    const el=document.getElementById('pay-qr');
+    if(el&&typeof QRCode!=='undefined'){
+      new QRCode(el,{text:purchaseUrl,width:160,height:160,colorDark:'#0a0a0a',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+    }
+  },80);
+}
+
+async function submitOrder(itemId){
+  const qty=parseInt($('po-qty')?.value||1);
+  const paymentRef=$('po-ref')?.value.trim();
+  if(!paymentRef)return toast('Enter payment reference','er');
+  const r=await api('POST','/api/orders',{itemId,qty,paymentRef});
+  if(r.id){
+    toast(`Order placed! Ref: ${r.id.slice(0,8)}…`,'ok','📦');
+    closeModal();
+    loadShop();
+  }else toast(r.error||'Error placing order','er');
+}
+
+/* ═══════ MY ORDERS ═══════ */
+async function loadMyOrders(){
+  if(!ME){$('orders-pb').innerHTML=`<div class="empty"><span class="e-ic">📦</span><div class="e-h">Sign in to view orders</div></div>`;return;}
+  const b=$('orders-pb');
+  b.innerHTML=`<div class="loader"><span class="spin"></span>Loading…</div>`;
+  // All orders filtered client-side (non-admin sees only own)
+  let orders=[];
+  if(ADM){orders=await api('GET','/api/orders');}
+  else{
+    try{orders=await api('GET','/api/orders');}catch(e){orders=[];}
+    orders=orders.filter?orders.filter(o=>o.buyerEmail===ME.email):[];
+  }
+  if(!orders.length){b.innerHTML=`<div class="empty"><span class="e-ic">📦</span><div class="e-h">No orders yet</div><div class="e-p">Purchase from the store to see orders here</div></div>`;return;}
+  b.innerHTML=`<div class="tbl-wrap"><table class="dtbl">
+    <thead><tr><th>Order ID</th><th>Item</th><th>Qty</th><th>Total</th><th>Status</th><th>Payment Ref</th><th>Date</th></tr></thead>
+    <tbody>${orders.map(o=>`<tr>
+      <td><span class="id-chip" onclick="copyText('${o.id}')">${o.id.slice(0,8)}…</span></td>
+      <td style="font-weight:600">${o.itemName||'—'}</td>
+      <td style="font-family:var(--m);font-size:12px">${o.qty||1}</td>
+      <td style="font-family:var(--m);font-size:13px;font-weight:700">${o.currency||'USD'} ${parseFloat(o.price||0).toFixed(2)}</td>
+      <td><span class="order-status os-${o.status||'pending'}">${(o.status||'pending').toUpperCase()}</span></td>
+      <td style="font-family:var(--m);font-size:11px;color:var(--t3)">${o.paymentRef||'—'}</td>
+      <td style="font-family:var(--m);font-size:11px;color:var(--t3);white-space:nowrap">${fmt.dt(o.createdAt)}</td>
+    </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+/* ═══════ ALL ORDERS (Admin) ═══════ */
+async function loadAllOrders(){
+  const b=$('all-orders-pb');
+  b.innerHTML=`<div class="loader"><span class="spin"></span>Loading orders…</div>`;
+  const orders=await api('GET','/api/orders');
+  if(!Array.isArray(orders)||!orders.length){
+    b.innerHTML=`<div class="empty"><span class="e-ic">🧾</span><div class="e-h">No orders yet</div></div>`;
+    return;
+  }
+  $('all-orders-ct').textContent=orders.length+' orders';
+  const totalRev=orders.reduce((s,o)=>s+(o.price||0),0);
+  const pending=orders.filter(o=>o.status==='pending').length;
+  b.innerHTML=`
+    <div class="ag" style="margin-bottom:18px">
+      <div class="ac green"><div class="ac-ic">💰</div><div class="ac-v">$${totalRev.toFixed(2)}</div><div class="ac-l">TOTAL REVENUE</div></div>
+      <div class="ac blue"><div class="ac-ic">📦</div><div class="ac-v">${orders.length}</div><div class="ac-l">TOTAL ORDERS</div></div>
+      <div class="ac orange"><div class="ac-ic">⏳</div><div class="ac-v">${pending}</div><div class="ac-l">PENDING</div></div>
+      <div class="ac green"><div class="ac-ic">✅</div><div class="ac-v">${orders.filter(o=>o.status==='paid').length}</div><div class="ac-l">PAID</div></div>
+    </div>
+    <div class="tbl-wrap"><table class="dtbl">
+      <thead><tr><th>Order ID</th><th>Buyer</th><th>Item</th><th>Qty</th><th>Total</th><th>Status</th><th>Payment Ref</th><th>Date</th><th>Actions</th></tr></thead>
+      <tbody>${orders.map(o=>`<tr id="ord-${o.id}">
+        <td><span class="id-chip" onclick="copyText('${o.id}')">${o.id.slice(0,8)}…</span></td>
+        <td>
+          <div style="font-weight:600;font-size:13px">${o.buyerName||'—'}</div>
+          <div class="em-chip" style="margin-top:3px;font-size:10px;cursor:pointer" onclick="copyText('${o.buyerEmail||''}')">${o.buyerEmail||'—'}</div>
+        </td>
+        <td style="font-weight:600">${o.itemName||'—'}</td>
+        <td style="font-family:var(--m);font-size:12px">${o.qty||1}</td>
+        <td style="font-family:var(--m);font-size:13px;font-weight:700">${o.currency||'USD'} ${parseFloat(o.price||0).toFixed(2)}</td>
+        <td>
+          <select class="srt" style="font-size:11px;padding:3px 8px" onchange="updateOrderStatus('${o.id}',this.value)">
+            ${['pending','paid','shipped','cancelled'].map(s=>`<option value="${s}"${o.status===s?' selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+          </select>
+        </td>
+        <td style="font-family:var(--m);font-size:11px;color:var(--t3)">${o.paymentRef||'—'}</td>
+        <td style="font-family:var(--m);font-size:11px;color:var(--t3);white-space:nowrap">${fmt.dt(o.createdAt)}</td>
+        <td>
+          <button class="btn btn-xs btn-o" onclick="showOrderQR('${o.id}','${fmt.esc(o.itemName||'')}','${o.currency||'USD'}','${o.price||0}')">⬛ QR</button>
+        </td>
+      </tr>`).join('')}
+      </tbody></table></div>`;
+}
+
+async function updateOrderStatus(id,status){
+  const r=await api('PUT',`/api/orders/${id}`,{status});
+  if(r.id){toast(`Order ${id.slice(0,8)}… → ${status}`,'ok','📦');}
+  else toast('Error updating order','er');
+}
+
+function showOrderQR(id,itemName,currency,price){
+  const qrData=`ORDER:${id}\nITEM:${itemName}\nAMOUNT:${currency} ${parseFloat(price).toFixed(2)}`;
+  showModal(`<div class="modal"><div class="modal-top"></div><div class="modal-body">
+    <div class="modal-title">Order QR</div>
+    <div class="modal-sub">ORDER #${id.slice(0,8).toUpperCase()}</div>
+    <div class="qr-wrap">
+      <div id="qr-canvas" style="width:200px;height:200px;margin:0 auto 12px"></div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px">${itemName}</div>
+      <div style="font-size:20px;font-weight:900;background:var(--grd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${currency} ${parseFloat(price).toFixed(2)}</div>
+      <div class="qr-caption" style="margin-top:8px">Order ID: ${id}</div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-o" onclick="closeModal()">Close</button>
+      <button class="btn btn-p" onclick="downloadQR('order-${id.slice(0,8)}')">⬇ Download</button>
+    </div>
+  </div></div>`);
+  setTimeout(()=>{
+    const el=document.getElementById('qr-canvas');
+    if(el&&typeof QRCode!=='undefined'){
+      new QRCode(el,{text:qrData,width:200,height:200,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.H});
+    }
+  },80);
+}
+
+async function loadOrdersCt(){
+  if(!ADM)return;
+  try{
+    const orders=await api('GET','/api/orders');
+    if(Array.isArray(orders)){
+      const pending=orders.filter(o=>o.status==='pending').length;
+      $('orders-ct').textContent=pending||orders.length;
+    }
+  }catch(e){}
+}
 
 /* ═══════ BOOT ═══════ */
 init();
