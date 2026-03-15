@@ -1,102 +1,70 @@
-# FileVault — Digital File Marketplace
+# NEXUS STEAM HQ — Deploy to Render
 
-A full-featured digital file marketplace with admin panel, Google login, QR payments, and more.
-
----
-
-## 🚀 Deploy to Render via GitHub (Step-by-Step)
-
-### STEP 1 — Create a GitHub Repository
-
-1. Go to **https://github.com/new**
-2. Repository name: `filevault-marketplace`
-3. Set to **Public** (required for Render free tier)
-4. Click **"Create repository"**
-
----
-
-### STEP 2 — Upload These Files to GitHub
-
-You have two options:
-
-#### Option A — GitHub Web Upload (easiest, no terminal needed)
-1. Open your new repo on GitHub
-2. Click **"uploading an existing file"** (shown on the empty repo page)
-3. Drag and drop ALL these files:
-   - `server.js`
-   - `package.json`
-   - `render.yaml`
-   - `.gitignore`
-   - `public/index.html`
-4. Scroll down → click **"Commit changes"**
-
-#### Option B — Git Terminal
-```bash
-git init
-git add .
-git commit -m "Initial commit — FileVault marketplace"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/filevault-marketplace.git
-git push -u origin main
+## 📁 Files in this folder
+```
+index.html    ← Your marketplace (don't rename this)
+server.js     ← Express server (serves the HTML)
+package.json  ← Node.js config
+.gitignore    ← Excludes node_modules from Git
 ```
 
 ---
 
-### STEP 3 — Connect to Render
+## 🚀 Step-by-Step: Deploy to Render (Free)
 
-1. Go to **https://render.com** → Sign up (free)
-2. Click **"New +"** → select **"Web Service"**
-3. Click **"Connect account"** → authorize GitHub
-4. Find and select your `filevault-marketplace` repo → click **"Connect"**
+### Step 1 — Push to GitHub
+1. Go to [github.com](https://github.com) → create a free account if needed
+2. Click **"New repository"** → name it `filevault` → **Public** → **Create**
+3. Upload all 4 files from this folder (`index.html`, `server.js`, `package.json`, `.gitignore`)
+4. Click **"Commit changes"**
 
----
+### Step 2 — Create a Render account
+1. Go to [render.com](https://render.com) → **Sign up free** (use GitHub to sign in — easiest)
 
-### STEP 4 — Configure the Service
-
-Fill in these exact settings:
+### Step 3 — Create a Web Service on Render
+1. Click **"New +"** → **"Web Service"**
+2. Click **"Connect a repository"** → select your `filevault` repo
+3. Fill in the settings:
 
 | Field | Value |
 |-------|-------|
 | **Name** | `filevault-marketplace` |
-| **Environment** | `Node` |
+| **Region** | Singapore (closest to India) |
+| **Branch** | `main` |
+| **Runtime** | `Node` |
 | **Build Command** | `npm install` |
-| **Start Command** | `npm start` |
-| **Plan** | `Free` |
+| **Start Command** | `node server.js` |
+| **Instance Type** | `Free` |
 
-Click **"Create Web Service"**
+4. Click **"Create Web Service"**
+
+### Step 4 — Wait ~2 minutes
+Render will install dependencies and start your server.
+
+### Step 5 — Your site is live! 🎉
+Your URL will be:
+```
+https://filevault-marketplace.onrender.com
+```
+(or similar — Render assigns the URL automatically)
 
 ---
 
-### STEP 5 — Wait for Deploy
-
-- Render will install dependencies and start the server (takes ~2 minutes)
-- You'll see build logs in real time
-- When it shows **"Your service is live"** ✅ you're done!
-- Your URL will be: `https://filevault-marketplace.onrender.com`
+## ⚠️ Free Tier Note
+On Render's free plan, the server **sleeps after 15 minutes of inactivity**.  
+The first visit after sleep takes ~30 seconds to wake up.  
+To avoid this, upgrade to the **Starter plan ($7/mo)** or use [UptimeRobot](https://uptimerobot.com) (free) to ping your site every 10 minutes and keep it awake.
 
 ---
 
-## 📁 Project Structure
-
-```
-filevault-marketplace/
-├── server.js          ← Express server
-├── package.json       ← Dependencies
-├── render.yaml        ← Render config
-├── .gitignore
-└── public/
-    └── index.html     ← The entire app
-```
-
-## 🔑 Admin Login
-
-```
-Email:    admin@filevault.io
-Password: admin123
-```
-
-## ⚠️ Notes
-
-- **Free Render plan** spins down after 15 mins of inactivity — first load after sleep takes ~30 seconds
-- To keep it always awake, upgrade to Render's Starter plan ($7/mo)
-- All data is in-memory (resets on restart) — for persistent data, add a database like PostgreSQL or MongoDB
+## 🔧 Google OAuth Setup (Optional)
+To enable "Sign in with Google":
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a project → Enable **Google Identity API**
+3. Go to **Credentials** → **Create OAuth 2.0 Client ID**
+4. Add your Render URL to **Authorized JavaScript origins**:
+   ```
+   https://filevault-marketplace.onrender.com
+   ```
+5. Copy your **Client ID**
+6. On your live site → **Admin** → **Settings** → paste the Client ID
